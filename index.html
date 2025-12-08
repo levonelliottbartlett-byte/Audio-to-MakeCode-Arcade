@@ -26,8 +26,9 @@
         width: 100%;
         max-width: 600px;
         text-align: center;
-        transition: background 0.3s, color 0.3s;
         font-size: 1.2rem;
+        transition: background 0.3s, color 0.3s;
+        cursor: pointer;
     }
     .drop-area.dragover {
         background: #ff6f61;
@@ -44,6 +45,20 @@
         overflow-x: auto;
         min-height: 200px;
     }
+    .github-link {
+        margin-top: 1.5rem;
+        font-size: 1rem;
+        color: #ff6f61;
+        text-decoration: none;
+        border: 1px solid #ff6f61;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        transition: background 0.3s, color 0.3s;
+    }
+    .github-link:hover {
+        background: #ff6f61;
+        color: #1e1e2f;
+    }
 </style>
 </head>
 <body>
@@ -52,6 +67,10 @@
     Drag & Drop WAV File Here
 </div>
 <pre id="output">Output will appear here...</pre>
+
+<a href="https://github.com/HomeAssistantTycoon/Audio-to-MakeCode-Arcade" target="_blank" class="github-link">
+    Support this project on GitHub ⭐
+</a>
 
 <script>
 let pyodideReadyPromise = loadPyodide({indexURL: "https://cdn.jsdelivr.net/pyodide/v0.26.3/full/"});
@@ -77,17 +96,22 @@ async function handleFile(file) {
         output.textContent = "Please provide a WAV file.";
         return;
     }
+
     output.textContent = "Loading Python runtime...";
     const pyodide = await pyodideReadyPromise;
 
     const arrayBuffer = await file.arrayBuffer();
     const wavBytes = new Uint8Array(arrayBuffer);
 
+    pyodide.globals.set("wav_bytes", wavBytes);
+
     const pyCode = `
 import struct
 import numpy as np
 import scipy
-from js import wavBytes
+from js import wav_bytes
+
+wav_bytes = bytes(wav_bytes.to_py())
 
 def constrain(value, min_value, max_value):
     return min(max(value, min_value), max_value)
@@ -104,7 +128,7 @@ def create_sound_instruction(start_freq, end_freq, start_vol, end_vol, duration)
 
 def audio_to_makecode_arcade(wav_bytes, period=25, gain=2.5):
     from io import BytesIO
-    sample_rate, data = scipy.io.wavfile.read(BytesIO(wav_bytes.to_py()))
+    sample_rate, data = scipy.io.wavfile.read(BytesIO(wav_bytes))
 
     if len(data.shape) > 1 and data.shape[1] > 1:
         data = data[:, 0]
@@ -150,7 +174,7 @@ def audio_to_makecode_arcade(wav_bytes, period=25, gain=2.5):
     )
     return code
 
-audio_to_makecode_arcade(wavBytes)
+audio_to_makecode_arcade(wav_bytes)
 `;
 
     output.textContent = "Converting...";
